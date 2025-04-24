@@ -1,615 +1,364 @@
-{
-    "dataSources": {
-        "ds_naUPoTdg": {
-            "type": "ds.savedSearch",
-            "options": {
-                "ref": "PriorityGBytesForecastCumulative-WorkInProgress"
-            },
-            "name": "Table search"
-        },
-        "ds_QJ0mC9KV": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" billingCycles.dailyDataUsage.priorityGB > 0 earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=$reportMonthTok|s$\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| eval stopDate=if(startDate=\"2024-12-31\",stopDate=\"2025-12-31\",stopDate)\n| where UsageDate>=startDate and UsageDate<stopDate\n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by UsageDate serviceLineNumber \n| stats count(serviceLineNumber) as Count by UsageDate",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "Production dB - Sites Per Day search"
-        },
-        "ds_lQWmxpr3": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date ```Get the Billing Cycle date from the json path```\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=$reportMonthTok|s$\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| eval stopDate=if(startDate=\"2024-12-31\",stopDate=\"2025-12-31\",stopDate)\n| where UsageDate>=startDate and UsageDate<stopDate\n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by serviceLineNumber UsageDate\n| stats sum(priorityGB) as \"Priority GBytes\" by UsageDate",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "usageDailyPriortyGB"
-        },
-        "ds_j3Djhaz4_ds_xGilFeS6": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date ```Get the Billing Cycle date from the json path```\n| spath output=totalPriorityGBytes path=billingCycles.totalPriorityGB\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=$reportMonthTok|s$\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| eval stopDate=if(startDate=\"2024-12-31\",stopDate=\"2025-12-31\",stopDate)\n| where UsageDate>=startDate and UsageDate<stopDate\n| stats max(totalPriorityGBytes) as priorityGB by serviceLineNumber\n| join type=left left=L Right=R where L.serviceLineNumber=R.data.serviceLineNumber\n      [search index=\"sat_leo_starlink_np\" sourcetype=device_servicelines  \"data.active\"=true \n| spath output=\"Service Line\" path=data.serviceLineNumber\n| spath output=\"CircuitID\" path=data.nickname\n| spath output=StartDate path=data.startDate\n| spath output=PublicIP path=data.publicIp\n| eval StartDate=strftime(strptime(StartDate,\"%F\"),\"%F\")\n]\n| sort -L.priorityGB\n| rename R.CircuitID as \"Circuit ID\"\n| rename L.priorityGB as \"Priority GBytes\"\n| head 20\n| table \"Circuit ID\" \"Priority GBytes\"",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "usageByServiceLineTop20"
-        },
-        "ds_pT7XFpER_ds_j3Djhaz4_ds_xGilFeS6": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date ```Get the Billing Cycle date from the json path```\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| where UsageDate=strftime(now(),\"%F\")\n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by UsageDate serviceLineNumber \n```| stats sum(priorityGB) by serviceLineNumber UsageDate```\n| join type=left left=L Right=R where L.serviceLineNumber=R.data.serviceLineNumber\n      [search index=\"sat_leo_starlink_np\" sourcetype=device_servicelines  \"data.active\"=true \n| spath output=\"Service Line\" path=data.serviceLineNumber\n| spath output=\"CircuitID\" path=data.nickname\n| spath output=StartDate path=data.startDate\n| spath output=PublicIP path=data.publicIp\n| eval StartDate=strftime(strptime(StartDate,\"%F\"),\"%F\")\n]\n| rename R.CircuitID as \"Circuit ID\"\n| rename L.priorityGB as \"Priority GBytes\"\n| rename L.UsageData as \"Usage Date\"\n| sort -\"Priority GBytes\"\n| head 10\n| table \"Circuit ID\" \"Priority GBytes\"",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "usageByCircuitIDTodayTop10"
-        },
-        "ds_9Obr8Fit": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_np\"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| spath output=EndDate path=billingCycles.endDate\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=\"2025-01-01\"\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| where UsageDate>=startDate\n| eval Month=strftime(UsageDate, \"@mon\")\n| stats max(billingCycles.totalPriorityGB) as \"Total Priority GBytes\" by serviceLineNumber EndDate\n| dedup serviceLineNumber EndDate\n| stats sum(\"Total Priority GBytes\") by EndDate\n| stats sum(sum(Total Priority GBytes)) as \"TotalUsage\"\n| eval \"Total Usage\"=tostring(TotalUsage,\"commas\").\" GBytes\"",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "DataCalcsByPriorityGB"
-        },
-        "ds_NndZmh4f": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_np\"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| spath output=EndDate path=billingCycles.endDate\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=\"2025-01-01\"\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| where UsageDate>=startDate\n| eval Month=strftime(UsageDate, \"@mon\")\n| stats max(billingCycles.totalPriorityGB) as \"Total Priority GBytes\" by serviceLineNumber EndDate\n| dedup serviceLineNumber EndDate\n| stats sum(\"Total Priority GBytes\") by EndDate\n| stats sum(sum(Total Priority GBytes)) as TotalPriorityGBytes\n| eval Jan2025AnnualPool = 1500000\n| eval PoolRemaining=Jan2025AnnualPool-TotalPriorityGBytes\n| eval PercentUsed=TotalPriorityGBytes/Jan2025AnnualPool, PercentLeft=PoolRemaining/Jan2025AnnualPool\n| eval PercentUsed=round(PercentUsed*100,2).\" %\", PercentLeft=round(PercentLeft*100,2).\" %\"\n| eval PoolRemaining=tostring(PoolRemaining,\"commas\").\" GBytes\"\n| eval Jan2025AnnualPool=tostring(Jan2025AnnualPool,\"commas\").\" GBytes\"\n| eval TotalPriorityGBytes=tostring(TotalPriorityGBytes,\"commas\").\" GBytes\"\n| table Jan2025AnnualPool TotalPriorityGBytes PoolRemaining PercentUsed PercentLeft"
-            },
-            "name": "DataCalcsByTotalGB"
-        },
-        "ds_1lP3X4Pr_ds_NndZmh4f": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_np\"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date ```Get the Billing Cycle date from the json path```\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=$reportMonthTok|s$\n| eval stopDate=strptime(startDate,\"%F\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| where UsageDate>=startDate and UsageDate<stopDate\n| stats max(billingCycles.totalPriorityGB) as \"Total Priority GBytes\" by serviceLineNumber\n| stats sum(\"Total Priority GBytes\") as TotalPriorityGBytes\n| eval Jan2025AnnualPool = 1500000\n| eval PoolRemaining=Jan2025AnnualPool-TotalPriorityGBytes\n| eval PercentUsed=TotalPriorityGBytes/Jan2025AnnualPool, PercentLeft=PoolRemaining/Jan2025AnnualPool\n| eval PercentUsed=round(PercentUsed*100,2).\" %\", PercentLeft=round(PercentLeft*100,2).\" %\"\n| eval PoolRemaining=tostring(PoolRemaining,\"commas\").\" GBytes\", TotalPriorityGBytes=tostring(TotalPriorityGBytes,\"commas\").\" GBytes\"\n| table Jan2025AnnualPool TotalPriorityGBytes PoolRemaining PercentUsed PercentLeft"
-            },
-            "name": "DataCalcsByTotalGBMonthly"
-        },
-        "ds_etIjh48m": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year \n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| eval UsageDate=strptime(UsageDate, \"%F\") \n| eval _time=UsageDate \n| eval UsageDate=strftime(UsageDate,\"%F\") \n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by serviceLineNumber _time \n| stats sum(priorityGB) as PriorityGBytes by _time\n| fit StateSpaceForecast PriorityGBytes output_metadata=true holdback=30day forecast_k=365day conf_interval=90 into \"ExpUsageForecast1\"\n| append [ | search index=\"ExpUsageForecast1\" | fields - lower* upper* ]\n| eval combined_gbytes = if(isnull(PriorityGBytes),'predicted(PriorityGBytes)', PriorityGBytes)\n| streamstats sum(combined_gbytes) as \"cumulative_gbytes\"\n| eval threshold_exceeded = if(cumulative_gbytes > 1500000, 1, 0)\n| where threshold_exceeded = 1 OR _time=strptime(\"2025-12-31\", \"%Y-%m-%d\")\n| eval forecast_gbytes=if(threshold_exceeded=1,min(cumulative_gbytes),cumulative_gbytes)\n| eval forecast_date=strftime(_time,\"%F\")\n| stats earliest(forecast_gbytes) as Forecast, earliest(forecast_date) as Date\n| eval Forecast=tostring(Forecast,\"commas\").\" GBytes\"\n| fields Forecast Date",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "forcastGBytes"
-        },
-        "ds_fzwMOhFb": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year \n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| eval UsageDate=strptime(UsageDate, \"%F\") \n| eval _time=UsageDate \n| eval UsageDate=strftime(UsageDate,\"%F\") \n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by serviceLineNumber _time \n| stats sum(priorityGB) as PriorityGBytes by _time\n| fit StateSpaceForecast PriorityGBytes output_metadata=true holdback=30day forecast_k=365day conf_interval=90 into \"ExpUsageForecast1\"\n| append [ | search index=\"ExpUsageForecast1\" | fields - lower* upper* ]\n| eval combined_gbytes = if(isnull(PriorityGBytes),'predicted(PriorityGBytes)', PriorityGBytes)\n| streamstats sum(combined_gbytes) as \"cumulative_gbytes\"\n| eval threshold_exceeded = if(cumulative_gbytes > 1500000, 1, 0)\n| where threshold_exceeded = 1 OR _time=strptime(\"2025-12-31\", \"%Y-%m-%d\")\n| eval forecast_gbytes=if(threshold_exceeded=1,min(cumulative_gbytes),cumulative_gbytes)\n| eval forecast_date=strftime(_time,\"%F\")\n| stats earliest(forecast_gbytes) as \"Forecast\", earliest(forecast_date) as \"Date\"\n| eval Forecast=tostring(Forecast,\"commas\").\" GBytes\"\n| fieldformat date=strftime(%Y-%m-%d)\n| fieldformat forecast_gbytes=numeric\n| table Forecast Date",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "Search_1"
-        },
-        "ds_m0Le8MqH": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_np\"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date \n| spath output=EndDate path=billingCycles.endDate\n| eval UsageDate=strptime(UsageDate,\"%Y-%m-%d\")\n| eval UsageDate=strftime(UsageDate,\"%Y-%m-%d\")\n| eval startDate=\"2025-01-01\"\n| eval stopDate = strftime(ceiling(relative_time(now(), \"+1mon\")/86400)*86400, \"%Y-%m-%d\")\n| eval stopDate=relative_time(stopDate,\"+1Mon@mon\")\n| eval stopDate=strftime(stopDate,\"%F\")\n| where UsageDate>=startDate\n| eval Month=strftime(UsageDate, \"@mon\")\n| stats max(billingCycles.totalPriorityGB) as \"Total Priority GBytes\" by serviceLineNumber EndDate\n| dedup serviceLineNumber EndDate\n| stats sum(\"Total Priority GBytes\") as \"Total GBytes\" by EndDate\n| eval EndDate=strptime(EndDate,\"%Y-%m-%dT%H:%M:%S\")\n| eval EndDate=strftime(EndDate-1, \"%Y-%m\")\n| rename EndDate as \"End Date\"\n| addcoltotals \"Total GBytes\" labelfield=\"End Date\" label=Total",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "usageByMonth"
-        },
-        "ds_Ltuku3ee": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_np sourcetype=\"device_terminals\" earliest=@year\n      | spath path=data{}.userTerminalId output=userterminal\n      | spath path=data{}.nickname output=nickname\n      | spath path=data{}.kitSerialNumber output=kitserialnumber\n      | spath path=data{}.dishSerialNumber output=dishserialnumber\n      | spath path=data{}.serviceLineNumber output=servicelinenumber\n      | spath path=data{}.active output=terminal_active\n| where servicelinenumber!=\"null\"\n| where terminal_active=\"true\"\n| dedup userterminal\n| stats count(userterminal), distinct_count(servicelinenumber)",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "totalServiceLines"
-        },
-        "ds_yusj8fsW": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_starlink_prod \"billingCycles.dailyDataUsage.date\"=\"*\" earliest=@year\r\n| spath output=UsageDate path=billingCycles.dailyDataUsage.date\r\n| eval UsageDate=strptime(UsageDate, \"%F\")\r\n| eval _time=UsageDate\r\n| eval UsageDate=strftime(UsageDate,\"%F\")\r\n| stats max(billingCycles.dailyDataUsage.priorityGB) as priorityGB by serviceLineNumber _time\r\n| stats sum(priorityGB) as PriorityGBytes by _time\r\n| predict \"PriorityGBytes\" as prediction algorithm=LLP5 holdback=10 future_timespan=365 period=7 upper95=upper95 lower95=lower95\r\n| eval combined_gbytes = if(isnull(PriorityGBytes),'prediction', PriorityGBytes)\r\n| streamstats sum(combined_gbytes) as \"cumulative_gbytes\"\r\n| eval threshold_exceeded = if(cumulative_gbytes > 1500000, 1, 0)\r\n| where threshold_exceeded = 1 OR _time>=strptime(\"2025-12-31\", \"%Y-%m-%d\")\r\n| eval forecast_gbytes=if(threshold_exceeded=1,min(cumulative_gbytes),cumulative_gbytes)\r\n| eval test=strftime(_time,\"%F\")\r\n| eval forecast_gbytes=tostring(forecast_gbytes,\"commas\").\" GBytes\"\r\n| stats earliest(forecast_gbytes), earliest(test)",
-                "queryParameters": {
-                    "earliest": "@y",
-                    "latest": "now"
-                }
-            },
-            "name": "Prediction"
-        },
-        "ds_ExuF2p1D": {
-            "type": "ds.search",
-            "options": {
-                "query": "| makeresults \r\n| eval current_month = strftime(now(), \"%m\")\r\n| eval current_month = current_month+1\r\n| eval months = mvrange(1, current_month, 1)\r\n| eval current_year = strftime(now(), \"%Y\")\r\n| mvexpand months\r\n| eval month_name = case(months == 1, \"January\", months == 2, \"February\", months == 3, \"March\", months == 4, \"April\", months == 5, \"May\", months == 6, \"June\", months == 7, \"July\", months == 8, \"August\", months == 9, \"September\", months == 10, \"October\", months == 11, \"November\", months == 12, \"December\")\r\n| eval first_of_month = case(months == 1, current_year.\"-01-01\", months == 2, current_year.\"-02-01\", months == 3, current_year.\"-03-01\", months == 4, current_year.\"-04-01\", months == 5, current_year.\"-05-01\", months == 6, current_year.\"-06-01\", months == 7, current_year.\"-07-01\", months == 8, current_year.\"-08-01\", months == 9, current_year.\"-09-01\", months == 10, current_year.\"-10-01\", months == 11, current_year.\"-11-01\", months == 12, current_year.\"-12-01\")\r\n| table month_name, first_of_month"
-            },
-            "name": "month_selected"
-        },
-        "ds_a053msMz": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year\n| join type=left left=circuit right=location where circuit.location=location.@id\n    [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year\n    ]\n    | join type=left left=L right=customer where L.location.customer=customer.@id\n    [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year\n     ]\n| rename L.* as *\n| table circuit.circuitalias location.sitename location.division customer.customername location.sitetype\n| stats count by customer.customername"
-            },
-            "name": "select_customer"
-        },
-        "ds_w8dg8Cgz": {
-            "type": "ds.search",
-            "options": {
-                "query": "index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year\n| join type=left left=circuit right=location where circuit.location=location.@id\n    [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year\n    ]\n    | join type=left left=L right=customer where L.location.customer=customer.@id\n    [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year\n     ]\n| rename L.* as *\n|  search customer.customername=\"$customer$\"\n| table circuit.circuitalias location.sitename location.division customer.customername location.sitetype\n| stats count by location.sitename"
-            },
-            "name": "select_sitecode"
-        }
-    },
-    "visualizations": {
-        "viz_dFzXu3CE": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_Ltuku3ee"
-            },
-            "title": "Service Line Count",
-            "showProgressBar": false,
-            "showLastUpdated": false,
-            "description": "",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('distinct_count(servicelinenumber)')"
-            },
-            "hideWhenNoData": true
-        },
-        "viz_d7PEFudd": {
-            "type": "splunk.column",
-            "options": {
-                "yAxisAbbreviation": "auto",
-                "y2AxisAbbreviation": "auto",
-                "showRoundedY2AxisLabels": false,
-                "legendTruncation": "ellipsisMiddle",
-                "showY2MajorGridLines": true,
-                "xAxisLabelRotation": -45,
-                "xAxisTitleVisibility": "show",
-                "yAxisTitleVisibility": "show",
-                "y2AxisTitleVisibility": "show",
-                "yAxisScale": "linear",
-                "showOverlayY2Axis": false,
-                "stackMode": "auto",
-                "showSplitSeries": false,
-                "showIndependentYRanges": false,
-                "legendDisplay": "off",
-                "xAxisTitleText": "Usage Date"
-            },
-            "dataSources": {
-                "primary": "ds_QJ0mC9KV"
-            },
-            "title": "Terminal Count Per Day",
-            "description": "Data Valid only after 10/7/2024"
-        },
-        "viz_NvmfYXr4": {
-            "type": "splunk.column",
-            "options": {
-                "yAxisAbbreviation": "auto",
-                "y2AxisAbbreviation": "auto",
-                "showRoundedY2AxisLabels": false,
-                "legendTruncation": "ellipsisMiddle",
-                "showY2MajorGridLines": true,
-                "xAxisLabelRotation": -45,
-                "xAxisTitleVisibility": "show",
-                "yAxisTitleVisibility": "show",
-                "y2AxisTitleVisibility": "show",
-                "yAxisScale": "linear",
-                "showOverlayY2Axis": false,
-                "stackMode": "auto",
-                "showIndependentYRanges": false,
-                "legendDisplay": "off",
-                "overlayFields": [],
-                "xAxisTitleText": "Usage Date"
-            },
-            "dataSources": {
-                "primary": "ds_lQWmxpr3"
-            },
-            "title": "Usage by Day",
-            "description": ""
-        },
-        "viz_7tr3SEJw": {
-            "type": "splunk.column",
-            "dataSources": {
-                "primary": "ds_j3Djhaz4_ds_xGilFeS6"
-            },
-            "title": "Top 10 Circuits by Usage",
-            "options": {
-                "legendDisplay": "off",
-                "xAxisTitleText": "Circuit ID",
-                "yAxisTitleText": "GByte Usage",
-                "yAxisLabelVisibility": "show",
-                "yAxisLineVisibility": "show",
-                "yAxisMajorTickSize": 5,
-                "yAxisMajorTickInterval": 2000,
-                "yAxisMinorTickVisibility": "show",
-                "yAxisMinorTickSize": 1,
-                "xAxisLabelRotation": -45
-            },
-            "eventHandlers": [
-                {
-                    "type": "drilldown.linkToDashboard",
-                    "options": {
-                        "app": "sat_access",
-                        "dashboard": "terminal_telemetry",
-                        "tokens": [
-                            {
-                                "token": "input_circuitid",
-                                "value": "row.Circuit ID.value"
-                            }
-                        ],
-                        "newTab": true
-                    }
-                }
-            ]
-        },
-        "viz_I1rYTOow": {
-            "type": "splunk.bar",
-            "dataSources": {
-                "primary": "ds_pT7XFpER_ds_j3Djhaz4_ds_xGilFeS6"
-            },
-            "title": "Top 10 Circuit Usage Today",
-            "showProgressBar": false,
-            "showLastUpdated": false,
-            "options": {
-                "legendDisplay": "off"
-            },
-            "eventHandlers": [
-                {
-                    "type": "drilldown.linkToDashboard",
-                    "options": {
-                        "app": "sat_access",
-                        "dashboard": "terminal_telemetry",
-                        "tokens": [
-                            {
-                                "token": "input_circuitid",
-                                "value": "row.Circuit ID.value"
-                            }
-                        ],
-                        "newTab": true
-                    }
-                }
-            ]
-        },
-        "viz_NYzcANPM": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_9Obr8Fit"
-            },
-            "title": "Year to Date Total",
-            "description": "Total for Year",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('Total Usage')",
-                "unit": ""
-            }
-        },
-        "viz_7XHOPXMn": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_1lP3X4Pr_ds_NndZmh4f"
-            },
-            "title": "Monthly Total",
-            "description": "Total for Selected Month",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('TotalPriorityGBytes')"
-            },
-            "hideWhenNoData": true
-        },
-        "viz_vPYawkXr": {
-            "type": "splunk.column",
-            "options": {
-                "dataValuesDisplay": "all"
-            },
-            "dataSources": {
-                "primary": "ds_m0Le8MqH"
-            },
-            "title": "Usage by Month",
-            "showProgressBar": false,
-            "showLastUpdated": false
-        },
-        "viz_3NPE2JwF": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_yusj8fsW"
-            },
-            "title": "Data Usage Prediction",
-            "description": "Data on Prediction Date",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('earliest(forecast_gbytes)')",
-                "unit": ""
-            }
-        },
-        "viz_CpGZ8nQK": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_yusj8fsW"
-            },
-            "title": "Data Usage Prediction Date",
-            "description": "Date of Prediction",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('earliest(test)')",
-                "unit": ""
-            }
-        },
-        "viz_ir07RoxR": {
-            "type": "splunk.singlevalue",
-            "dataSources": {
-                "primary": "ds_Ltuku3ee"
-            },
-            "title": "Terminal Count",
-            "showProgressBar": false,
-            "showLastUpdated": false,
-            "description": "",
-            "options": {
-                "majorValue": "> sparklineValues | lastPoint()",
-                "trendValue": "> sparklineValues | delta(-2)",
-                "sparklineValues": "> primary | seriesByName('count(userterminal)')"
-            },
-            "hideWhenNoData": true
-        },
-        "viz_lBjYNd5y": {
-            "type": "splunk.rectangle",
-            "options": {
-                "fillColor": "transparent",
-                "strokeColor": "transparent"
-            }
-        }
-    },
-    "inputs": {
-        "input_global_trp": {
-            "type": "input.timerange",
-            "options": {
-                "token": "global_time",
-                "defaultValue": "-24h@h,now"
-            },
-            "title": "Global Time Range"
-        },
-        "input_report_month": {
-            "options": {
-                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
-                "token": "reportMonthTok",
-                "selectFirstSearchResult": true
-            },
-            "title": "Select Report Month",
-            "type": "input.dropdown",
-            "dataSources": {
-                "primary": "ds_ExuF2p1D"
-            },
-            "context": {
-                "formattedConfig": {
-                    "number": {
-                        "prefix": ""
-                    }
-                },
-                "formattedStatics": ">statics | formatByType(formattedConfig)",
-                "statics": [],
-                "label": ">primary | seriesByName(\"month_name\") | renameSeries(\"label\") | formatByType(formattedConfig)",
-                "value": ">primary | seriesByName(\"first_of_month\") | renameSeries(\"value\") | formatByType(formattedConfig)"
-            }
-        },
-        "input_z9lMFEkJ": {
-            "options": {
-                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
-                "defaultValue": "*",
-                "token": "customer"
-            },
-            "title": "Select Customer",
-            "type": "input.dropdown",
-            "dataSources": {
-                "primary": "ds_a053msMz"
-            },
-            "context": {
-                "formattedConfig": {
-                    "number": {
-                        "prefix": ""
-                    }
-                },
-                "formattedStatics": ">statics | formatByType(formattedConfig)",
-                "statics": [
-                    [
-                        "All"
-                    ],
-                    [
-                        "*"
-                    ]
-                ],
-                "label": ">primary | seriesByName(\"customer.customername\") | renameSeries(\"label\") | formatByType(formattedConfig)",
-                "value": ">primary | seriesByName(\"customer.customername\") | renameSeries(\"value\") | formatByType(formattedConfig)"
-            }
-        },
-        "input_MdEBA3Np": {
-            "options": {
-                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
-                "token": "dd_v30WMuBY",
-                "selectFirstSearchResult": true
-            },
-            "title": "Select Sitecode",
-            "type": "input.dropdown",
-            "dataSources": {
-                "primary": "ds_w8dg8Cgz"
-            },
-            "context": {
-                "formattedConfig": {
-                    "number": {
-                        "prefix": ""
-                    }
-                },
-                "formattedStatics": ">statics | formatByType(formattedConfig)",
-                "statics": [],
-                "label": ">primary | seriesByName(\"location.sitename\") | renameSeries(\"label\") | formatByType(formattedConfig)",
-                "value": ">primary | seriesByName(\"location.sitename\") | renameSeries(\"value\") | formatByType(formattedConfig)"
-            }
-        }
-    },
-    "layout": {
-        "type": "grid",
-        "options": {
-            "width": 1440,
-            "height": 960
-        },
-        "structure": [
-            {
-                "item": "viz_NYzcANPM",
-                "type": "block",
-                "position": {
-                    "x": 0,
-                    "y": 0,
-                    "w": 718,
-                    "h": 79
-                }
-            },
-            {
-                "item": "viz_7XHOPXMn",
-                "type": "block",
-                "position": {
-                    "x": 718,
-                    "y": 0,
-                    "w": 324,
-                    "h": 79
-                }
-            },
-            {
-                "item": "viz_ir07RoxR",
-                "type": "block",
-                "position": {
-                    "x": 0,
-                    "y": 79,
-                    "w": 176,
-                    "h": 85
-                }
-            },
-            {
-                "item": "viz_vPYawkXr",
-                "type": "block",
-                "position": {
-                    "x": 0,
-                    "y": 164,
-                    "w": 664,
-                    "h": 344
-                }
-            },
-            {
-                "item": "viz_7tr3SEJw",
-                "type": "block",
-                "position": {
-                    "x": 0,
-                    "y": 508,
-                    "w": 664,
-                    "h": 342
-                }
-            },
-            {
-                "item": "viz_d7PEFudd",
-                "type": "block",
-                "position": {
-                    "x": 0,
-                    "y": 850,
-                    "w": 1440,
-                    "h": 350
-                }
-            },
-            {
-                "item": "viz_dFzXu3CE",
-                "type": "block",
-                "position": {
-                    "x": 176,
-                    "y": 79,
-                    "w": 196,
-                    "h": 85
-                }
-            },
-            {
-                "item": "viz_lBjYNd5y",
-                "type": "block",
-                "position": {
-                    "x": 372,
-                    "y": 79,
-                    "w": 1068,
-                    "h": 85
-                }
-            },
-            {
-                "item": "viz_NvmfYXr4",
-                "type": "block",
-                "position": {
-                    "x": 664,
-                    "y": 164,
-                    "w": 776,
-                    "h": 344
-                }
-            },
-            {
-                "item": "viz_I1rYTOow",
-                "type": "block",
-                "position": {
-                    "x": 664,
-                    "y": 508,
-                    "w": 776,
-                    "h": 342
-                }
-            },
-            {
-                "item": "viz_CpGZ8nQK",
-                "type": "block",
-                "position": {
-                    "x": 1042,
-                    "y": 0,
-                    "w": 171,
-                    "h": 79
-                }
-            },
-            {
-                "item": "viz_3NPE2JwF",
-                "type": "block",
-                "position": {
-                    "x": 1213,
-                    "y": 0,
-                    "w": 227,
-                    "h": 79
-                }
-            }
-        ],
-        "globalInputs": [
-            "input_global_trp",
-            "input_report_month",
-            "input_z9lMFEkJ",
-            "input_MdEBA3Np"
-        ]
-    },
-    "title": "Starlink Usage Dashboard Clone(NEW CUSTOMER)",
-    "description": "",
-    "defaults": {
-        "dataSources": {
-            "ds.search": {
-                "options": {
-                    "queryParameters": {
-                        "latest": "$global_time.latest$",
-                        "earliest": "$global_time.earliest$"
-                    }
-                }
-            }
-        }
-    }
-}
+<form version="1.1" theme="dark">
+  <label>Starlink Map</label>
+  <search id="base_search">
+    <query>
+      index=sat_leo_starlink_prod sourcetype="device_terminals" 
+| spath path=data{}.userTerminalId output=userterminal
+| spath path=data{}.nickname output=nickname
+| spath path=data{}.kitSerialNumber output=kitserialnumber
+| spath path=data{}.dishSerialNumber output=dishserialnumber
+| spath path=data{}.serviceLineNumber output=servicelinenumber
+| spath path=data{}.active output=terminal_active 
+
+| join type=left left=terminal right=telemetry where terminal.userterminal = telemetry.userterminal
+    [ search index=sat_leo_starlink_prod sourcetype="device_telemetry" 
+   | spath "data{}" 
+   | search "data{}"=u
+   | rex field=_raw "\"data\":\[.+?,(?&lt;datatime&gt;-?\d+(?:\.+\d*)?),\"ut(?&lt;userterminal&gt;.+?)\",(?&lt;downlinkthroughput&gt;-?\d+(?:\.+\d*)?),(?&lt;uplinkthroughput&gt;-?\d+(?:\.+\d*)?),(?&lt;pingdroprateavg&gt;-?\d+(?:\.+\d*)?),(?&lt;pinglatencymsavg&gt;[0-9]+),(?&lt;obstructionpercenttime&gt;-?\d+(?:\.+\d*)?),(?&lt;uptime&gt;-?\d+(?:\.+\d*)?),(?&lt;signalquality&gt;-?\d+(?:\.+\d*)?),(?&lt;h3cellid&gt;-?\d+(?:\.+\d*)?),(?&lt;secondsuntilreboot&gt;-?\d+(?:\.+\d*)?),\"(?&lt;runningsoftwareversion&gt;.+?)\"," 
+   | rex field=_raw "\[(?&lt;activealerts&gt;(?:\d+,)*\d*)\]"
+   | where isnotnull(userterminal)
+   | eval days=floor(uptime/86400)
+   | eval hours=floor((uptime - days*86400)/3600)
+   | eval minutes=floor((uptime - days*86400 - hours*3600)/60)
+   | eval seconds=floor(uptime - days*86400 - hours*3600 - minutes*60)
+   | eval milliseconds=round((uptime - floor(uptime))*1000) 
+   | eval uptime_formatted = days . " days " . hours . ":" . minutes . ":" . seconds . "." . milliseconds
+   | eval signalquality=signalquality*100
+   | spath data{}{}
+   | rename data{}{} as alert_codes
+   | eval alert_codes=if(isnull(alert_codes) or alert_codes="", "none", mvindex(alert_codes, 0)) 
+   | eval alert_description=case(alert_codes == 66, "high_time_obstruction", alert_codes == 82, "software_update_reboot_pending", alert_codes == 50, "ethernet_slow_10mbps", alert_codes == 51, "ethernet_slow_100mbps", alert_codes == 52, "power_supply_thermal_throttling", alert_codes == 53, "actuator_motor_stuck", alert_codes == 54, "mast_not_vertical", alert_codes == 55, "disabled_no_active_service_line", alert_codes == 56, "disabled_too_far_from_service_address", alert_codes == 57, "disabled_no_service_in_ocean", alert_codes == 58, "disabled_invalid_country", alert_codes == 83, "disabled_blocked_country", alert_codes == 84, "disabled_data_usage_exceeded_quota", alert_codes == 89, "disabled_cell_is_disabled", alert_codes == 59, "disabled_moving_while_not_mobile", alert_codes == 60, "disabled_moving_too_fast", alert_codes == 61, "power_disconnect_detected", alert_codes == 62, "pop_change", alert_codes == 63, "unable_to_align", alert_codes == 80, "thermal_shutdown", alert_codes == 81, "thermal_throttling")
+   | eval datetime = datatime/1000000000
+   | eval _time=datetime
+   | eval status = if(_time &gt;= relative_time(now(),"-15m"), if(isnull(alert_description),"Healthy","online/alert"), "offline")
+   | sort -datetime  
+   | eval datetime=strftime(datetime,"%Y-%m-%d %H:%M:%S")
+    ]
+
+| search terminal.servicelinenumber!=null
+| search terminal.terminal_active="true"
+| table *
+
+    </query>
+  </search>
+  <fieldset submitButton="false" autoRun="true"></fieldset>
+  <row>
+    <panel>
+      <title>Selected Circuits</title>
+      <input type="dropdown" token="input_filter_circuit">
+        <label>Select Circuit ID</label>
+        <choice value="">All</choice>
+        <default></default>
+        <fieldForLabel>CircuitID</fieldForLabel>
+        <fieldForValue>CircuitID</fieldForValue>
+        <search base="base_search">| join type=left left=x right=sl where x.terminal.servicelinenumber=sl.data.serviceLineNumber
+  [ search index="sat_leo_starlink_prod" sourcetype=device_servicelines  "data.active"=true 
+   | spath output="Service Line" path=data.serviceLineNumber
+   | spath output="CircuitID" path=data.nickname
+   | spath output=StartDate path=data.startDate
+   | spath output=PublicIP path=data.publicIp
+   | eval StartDate=strftime(strptime(StartDate,"%F"),"%F")
+    ]
+| rename x.* as *
+
+| join type=left left=x right=prov where x.sl.CircuitID = prov.circuit.circuitalias
+
+    [search index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year
+      | join type=left left=circuit right=location where circuit.location=location.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year
+      ]
+      | join type=left left=L right=customer where L.location.customer=customer.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year
+      ]
+| rename L.* as *]
+| rename x.* as *
+| rename prov.* as *
+| stats latest("sl.Service Line") as ServiceLine latest(terminal.kitserialnumber) as KitSN latest(customer.customername) as Customer latest(location.division) as Division latest(location.sitename) as SiteName latest(location.northlatitude) as NLat latest(location.eastlongitude) as ELong  latest(telemetry.activealerts) as Alerts latest(telemetry.h3cellid) as H3cell latest(telemetry.status) as Status latest(telemetry.uptime_formatted) as Uptime latest(telemetry.datetime) as TelemetryTime latest(alert_description) as AlertDesc by circuit.circuitalias
+| eval Status=if(isnull(Status),"No Data",Status)
+| eval state=split("$input_status$",",")
+| eval state1=mvindex(state,0), state2=mvindex(state,1),state3=mvindex(state,2), state4=mvindex(state,3)
+| where Status=state1 OR Status=state2 OR Status=state3 OR Status=state4
+| eval Location="N". NLat ." E". ELong
+| eval Location=if(isnull(H3cell),Location,H3cell)
+| rename circuit.circuitalias as CircuitID
+| eval latitude=if(isnull(NLat),1.0,NLat)
+| eval longitude=if(isnull(ELong),-1.0,ELong)
+| eval NLat=tonumber(NLat), ELong=tonumber(ELong)
+| eval description = "Circuit ID: ". CircuitID ."Customer: ". Customer
+| eval tooltip = "Service Line:". ServiceLine ." Kit S/N ". KitSN ." Status: ". Status ." Last Telemetry: ". TelemetryTime
+| eval markerColor = case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| eval layerDescription=case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| table CircuitID ServiceLine KitSN Status Alerts Customer Division</search>
+      </input>
+      <input type="checkbox" token="input_status">
+        <label>Select Status</label>
+        <choice value="Healthy,">Healthy</choice>
+        <choice value="online,">Online/Alert</choice>
+        <choice value="offline,">Offline</choice>
+        <choice value="No Data">No Current Data</choice>
+        <default>No Data</default>
+        <initialValue>No Data</initialValue>
+      </input>
+      <table>
+        <search base="base_search">| join type=left left=x right=sl where x.terminal.servicelinenumber=sl.data.serviceLineNumber
+  [ search index="sat_leo_starlink_prod" sourcetype=device_servicelines  "data.active"=true 
+   | spath output="Service Line" path=data.serviceLineNumber
+   | spath output="CircuitID" path=data.nickname
+   | spath output=StartDate path=data.startDate
+   | spath output=PublicIP path=data.publicIp
+   | eval StartDate=strftime(strptime(StartDate,"%F"),"%F")
+   | where CircuitID like "%$input_filter_circuit$%"
+    ]
+| rename x.* as *
+
+| join type=left left=x right=prov where x.sl.CircuitID = prov.circuit.circuitalias
+
+    [search index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year
+      | join type=left left=circuit right=location where circuit.location=location.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year
+      ]
+      | join type=left left=L right=customer where L.location.customer=customer.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year
+      ]
+| rename L.* as *]
+| rename x.* as *
+| rename prov.* as *
+| stats latest("sl.Service Line") as ServiceLine latest(terminal.kitserialnumber) as KitSN latest(customer.customername) as Customer latest(location.division) as Division latest(location.sitename) as SiteName latest(location.northlatitude) as NLat latest(location.eastlongitude) as ELong  latest(telemetry.activealerts) as Alerts latest(telemetry.h3cellid) as H3cell latest(telemetry.status) as Status latest(telemetry.uptime_formatted) as Uptime latest(telemetry.datetime) as TelemetryTime latest(alert_description) as AlertDesc by circuit.circuitalias
+| eval Status=if(isnull(Status),"No Data",Status)
+| eval state=split("$input_status$",",")
+| eval state1=mvindex(state,0), state2=mvindex(state,1),state3=mvindex(state,2), state4=mvindex(state,3)
+| where Status=state1 OR Status=state2 OR Status=state3 OR Status=state4
+| eval Location="N". NLat ." E". ELong
+| eval Location=if(isnull(H3cell),Location,H3cell)
+| rename circuit.circuitalias as CircuitID
+| eval latitude=if(isnull(NLat),1.0,NLat)
+| eval longitude=if(isnull(ELong),-1.0,ELong)
+| eval NLat=tonumber(NLat), ELong=tonumber(ELong)
+| eval description = "Circuit ID: ". CircuitID ."Customer: ". Customer
+| eval tooltip = "Service Line:". ServiceLine ." Kit S/N ". KitSN ." Status: ". Status ." Last Telemetry: ". TelemetryTime
+| eval markerColor = case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| eval layerDescription=case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| table CircuitID ServiceLine KitSN Status Alerts Customer Division</search>
+        <option name="count">15</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">false</option>
+        <drilldown>
+          <link target="_blank">/app/sat_access/terminal_telemetry?input_circuit=$row.CircuitID$</link>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <title>Map View</title>
+      <input type="dropdown" token="input_circuit" searchWhenChanged="true">
+        <label>Select Circuit ID</label>
+        <fieldForLabel>CircuitID</fieldForLabel>
+        <fieldForValue>CircuitID</fieldForValue>
+        <search base="base_search">| join type=left left=x right=sl where x.terminal.servicelinenumber=sl.data.serviceLineNumber
+  [ search index="sat_leo_starlink_prod" sourcetype=device_servicelines  "data.active"=true 
+   | spath output="Service Line" path=data.serviceLineNumber
+   | spath output="CircuitID" path=data.nickname
+   | spath output=StartDate path=data.startDate
+   | spath output=PublicIP path=data.publicIp
+   | eval StartDate=strftime(strptime(StartDate,"%F"),"%F")
+    ]
+| rename x.* as *
+
+| join type=left left=x right=prov where x.sl.CircuitID = prov.circuit.circuitalias
+
+    [search index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year
+      | join type=left left=circuit right=location where circuit.location=location.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year
+      ]
+      | join type=left left=L right=customer where L.location.customer=customer.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year
+      ]
+| rename L.* as *]
+| rename x.* as *
+| rename prov.* as *
+| stats latest("sl.Service Line") as ServiceLine latest(terminal.kitserialnumber) as KitSN latest(customer.customername) as Customer latest(location.division) as Division latest(location.sitename) as SiteName latest(location.northlatitude) as NLat latest(location.eastlongitude) as ELong  latest(telemetry.activealerts) as Alerts latest(telemetry.h3cellid) as H3cell latest(telemetry.status) as Status latest(telemetry.uptime_formatted) as Uptime latest(telemetry.datetime) as TelemetryTime latest(alert_description) as AlertDesc by circuit.circuitalias
+| eval Status=if(isnull(Status),"No Data",Status)
+| eval state=split("$input_status$",",")
+| eval state1=mvindex(state,0), state2=mvindex(state,1),state3=mvindex(state,2), state4=mvindex(state,3)
+| where Status=state1 OR Status=state2 OR Status=state3 OR Status=state4
+| eval Location="N". NLat ." E". ELong
+| eval Location=if(isnull(H3cell),Location,H3cell)
+| rename circuit.circuitalias as CircuitID
+| eval latitude=if(isnull(NLat),1.0,NLat)
+| eval longitude=if(isnull(ELong),-1.0,ELong)
+| eval NLat=tonumber(NLat), ELong=tonumber(ELong)
+| eval description = "Circuit ID: ". CircuitID ."Customer: ". Customer
+| eval tooltip = "Service Line:". ServiceLine ." Kit S/N ". KitSN ." Status: ". Status ." Last Telemetry: ". TelemetryTime
+| eval markerColor = case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| eval layerDescription=case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%Offline%"),"red",Status="No Data","grey")
+| table CircuitID ServiceLine KitSN Status Alerts Customer Division</search>
+        <choice value="">All</choice>
+        <default></default>
+      </input>
+      <viz type="leaflet_maps_app.maps-plus">
+        <title>Selected Circuits</title>
+        <search>
+          <query>index=sat_leo_starlink_prod sourcetype="device_terminals" 
+| spath path=data{}.userTerminalId output=userterminal
+| spath path=data{}.nickname output=nickname
+| spath path=data{}.kitSerialNumber output=kitserialnumber
+| spath path=data{}.dishSerialNumber output=dishserialnumber
+| spath path=data{}.serviceLineNumber output=servicelinenumber
+| spath path=data{}.active output=terminal_active 
+
+| join type=left left=terminal right=telemetry where terminal.userterminal = telemetry.userterminal
+    [ search index=sat_leo_starlink_prod sourcetype="device_telemetry" 
+   | spath "data{}" 
+   | search "data{}"=u
+   | rex field=_raw "\"data\":\[.+?,(?&lt;datatime&gt;-?\d+(?:\.+\d*)?),\"ut(?&lt;userterminal&gt;.+?)\",(?&lt;downlinkthroughput&gt;-?\d+(?:\.+\d*)?),(?&lt;uplinkthroughput&gt;-?\d+(?:\.+\d*)?),(?&lt;pingdroprateavg&gt;-?\d+(?:\.+\d*)?),(?&lt;pinglatencymsavg&gt;[0-9]+),(?&lt;obstructionpercenttime&gt;-?\d+(?:\.+\d*)?),(?&lt;uptime&gt;-?\d+(?:\.+\d*)?),(?&lt;signalquality&gt;-?\d+(?:\.+\d*)?),(?&lt;h3cellid&gt;-?\d+(?:\.+\d*)?),(?&lt;secondsuntilreboot&gt;-?\d+(?:\.+\d*)?),\"(?&lt;runningsoftwareversion&gt;.+?)\"," 
+   | rex field=_raw "\[(?&lt;activealerts&gt;(?:\d+,)*\d*)\]"
+   | where isnotnull(userterminal)
+   | eval days=floor(uptime/86400)
+   | eval hours=floor((uptime - days*86400)/3600)
+   | eval minutes=floor((uptime - days*86400 - hours*3600)/60)
+   | eval seconds=floor(uptime - days*86400 - hours*3600 - minutes*60)
+   | eval milliseconds=round((uptime - floor(uptime))*1000) 
+   | eval uptime_formatted = days . " days " . hours . ":" . minutes . ":" . seconds . "." . milliseconds   | spath data{}{}
+   | eval signalquality=signalquality*100
+   | rename data{}{} as alert_codes
+   | eval alert_codes=if(isnull(alert_codes) or alert_codes="", "none", mvindex(alert_codes, 0)) 
+   | eval alert_description=case(alert_codes == 66, "high_time_obstruction", alert_codes == 82, "software_update_reboot_pending", alert_codes == 50, "ethernet_slow_10mbps", alert_codes == 51, "ethernet_slow_100mbps", alert_codes == 52, "power_supply_thermal_throttling", alert_codes == 53, "actuator_motor_stuck", alert_codes == 54, "mast_not_vertical", alert_codes == 55, "disabled_no_active_service_line", alert_codes == 56, "disabled_too_far_from_service_address", alert_codes == 57, "disabled_no_service_in_ocean", alert_codes == 58, "disabled_invalid_country", alert_codes == 83, "disabled_blocked_country", alert_codes == 84, "disabled_data_usage_exceeded_quota", alert_codes == 89, "disabled_cell_is_disabled", alert_codes == 59, "disabled_moving_while_not_mobile", alert_codes == 60, "disabled_moving_too_fast", alert_codes == 61, "power_disconnect_detected", alert_codes == 62, "pop_change", alert_codes == 63, "unable_to_align", alert_codes == 80, "thermal_shutdown", alert_codes == 81, "thermal_throttling")
+   | eval datetime = datatime/1000000000
+   | eval _time=datetime
+   | eval status = if(_time &gt;= relative_time(now(),"-15m"), if(isnull(alert_description),"Healthy","online/alert"), "offline")
+   | sort -datetime  
+   | eval datetime=strftime(datetime,"%Y-%m-%d %H:%M:%S")
+    ]
+
+| search terminal.servicelinenumber!=null
+| search terminal.terminal_active="true"
+| join type=left left=x right=sl where x.terminal.servicelinenumber=sl.data.serviceLineNumber
+  [ search index="sat_leo_starlink_prod" sourcetype=device_servicelines  "data.active"=true 
+   | spath output="Service Line" path=data.serviceLineNumber
+   | spath output="CircuitID" path=data.nickname
+   | spath output=StartDate path=data.startDate
+   | spath output=PublicIP path=data.publicIp
+   | eval StartDate=strftime(strptime(StartDate,"%F"),"%F")
+   | where CircuitID like "%$input_circuit$%"
+    ]
+| rename x.* as *
+
+| join type=left left=x right=prov where x.sl.CircuitID = prov.circuit.circuitalias
+
+    [search index=sat_leo_ref sourcetype=sat_prov_circuit earliest=@year
+      | join type=left left=circuit right=location where circuit.location=location.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_location earliest=@year
+      ]
+      | join type=left left=L right=customer where L.location.customer=customer.@id
+      [search index=sat_leo_ref sourcetype=sat_prov_customer earliest=@year
+      ]
+| rename L.* as *]
+| rename x.* as *
+| rename prov.* as *
+| stats latest("sl.Service Line") as ServiceLine latest(terminal.kitserialnumber) as KitSN latest(customer.customername) as Customer latest(location.division) as Division latest(location.sitename) as SiteName latest(location.northlatitude) as NLat latest(location.eastlongitude) as ELong  latest(telemetry.activealerts) as Alerts latest(telemetry.h3cellid) as H3cell latest(telemetry.status) as Status latest(telemetry.uptime_formatted) as Uptime latest(telemetry.datetime) as TelemetryTime latest(alert_description) as AlertDesc by circuit.circuitalias
+| eval Status=if(isnull(Status),"No Data",Status)
+```| search Status="Healthy" OR Status="online/alert" OR Status="Offline"```
+| eval Location="N". NLat ." E". ELong
+| eval Location=if(isnull(H3cell),Location,H3cell)
+| rename circuit.circuitalias as CircuitID
+| eval latitude=if(isnull(NLat),1.0,NLat)
+| eval longitude=if(isnull(ELong),-1.0,ELong)
+| eval NLat=tonumber(NLat), ELong=tonumber(ELong)
+```| eval description = "Circuit ID: ". CircuitID ."&lt;br&gt;". "Customer: ". Customer```
+| eval tooltip = "&lt;b&gt;Service Line:&lt;/b&gt;". ServiceLine ."&lt;br&gt;"."&lt;b&gt;Kit S/N&lt;/b&gt;". KitSN ."&lt;br&gt;"."&lt;b&gt;Status:&lt;/b&gt;" . Status ."&lt;br&gt;"."&lt;b&gt;Last Telemetry:&lt;/b&gt;". TelemetryTime
+| eval icon=case(like(Status,"%Healthy%"),"standard-icon", like(Status, "%online/alert%"),"standard-icon",like(Status,"%Offline%"),"exclamation-triangle",like(Status,"%Data%"),"exclamation-triangle")
+| eval markerColor = case(like(Status,"%Healthy%"),"green", like(Status, "%online/alert%"),"orange",like(Status,"%offline%"),"purple",like(Status,"%Data%"),"gray")
+| eval layerDescription= case(like(Status,"%Healthy%"),"Online", like(Status, "%online/alert%"),"Online",like(Status,"%offline%"),"Offline",like(Status,"%Data%"),"No Data")
+
+| table latitude, longitude  description tooltip  Status markerColor icon layerDescription</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="height">655</option>
+        <option name="leaflet_maps_app.maps-plus.allPopups">0</option>
+        <option name="leaflet_maps_app.maps-plus.animate">1</option>
+        <option name="leaflet_maps_app.maps-plus.autoFitAndZoom">1</option>
+        <option name="leaflet_maps_app.maps-plus.autoFitAndZoomDelay">500</option>
+        <option name="leaflet_maps_app.maps-plus.bingMaps">0</option>
+        <option name="leaflet_maps_app.maps-plus.bingMapsLabelLanguage">en-US</option>
+        <option name="leaflet_maps_app.maps-plus.bingMapsTileLayer">CanvasLight</option>
+        <option name="leaflet_maps_app.maps-plus.cluster">1</option>
+        <option name="leaflet_maps_app.maps-plus.contextMenu">1</option>
+        <option name="leaflet_maps_app.maps-plus.criticalThreshold">80</option>
+        <option name="leaflet_maps_app.maps-plus.defaultHeight">600</option>
+        <option name="leaflet_maps_app.maps-plus.disableClusteringAtZoom">0</option>
+        <option name="leaflet_maps_app.maps-plus.drilldown">0</option>
+        <option name="leaflet_maps_app.maps-plus.drilldownAction">dblclick</option>
+        <option name="leaflet_maps_app.maps-plus.fullScreen">0</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesPosition">topleft</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesSearch">0</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesZoomLevel">12</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapBlur">15</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapColorGradient">{"0.4":"blue","0.6":"cyan","0.7":"lime","0.8":"yellow","1":"red"}</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapEnable">0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapMaxPointIntensity">1.0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapMinOpacity">1.0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapOnly">0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapRadius">25</option>
+        <option name="leaflet_maps_app.maps-plus.i18nLanguage">en</option>
+        <option name="leaflet_maps_app.maps-plus.layerControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.layerControlCollapsed">1</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterLat">39.50</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterLon">-98.35</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterZoom">6</option>
+        <option name="leaflet_maps_app.maps-plus.mapTile">http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png</option>
+        <option name="leaflet_maps_app.maps-plus.maxClusterRadius">80</option>
+        <option name="leaflet_maps_app.maps-plus.maxSpiderfySize">100</option>
+        <option name="leaflet_maps_app.maps-plus.maxZoom">19</option>
+        <option name="leaflet_maps_app.maps-plus.measureActiveColor">#00ff00</option>
+        <option name="leaflet_maps_app.maps-plus.measureCompletedColor">#0066ff</option>
+        <option name="leaflet_maps_app.maps-plus.measureIconPosition">topright</option>
+        <option name="leaflet_maps_app.maps-plus.measureLocalization">en</option>
+        <option name="leaflet_maps_app.maps-plus.measurePrimaryAreaUnit">acres</option>
+        <option name="leaflet_maps_app.maps-plus.measurePrimaryLengthUnit">feet</option>
+        <option name="leaflet_maps_app.maps-plus.measureSecondaryAreaUnit">sqmiles</option>
+        <option name="leaflet_maps_app.maps-plus.measureSecondaryLengthUnit">miles</option>
+        <option name="leaflet_maps_app.maps-plus.measureTool">1</option>
+        <option name="leaflet_maps_app.maps-plus.minZoom">1</option>
+        <option name="leaflet_maps_app.maps-plus.multiplePopups">0</option>
+        <option name="leaflet_maps_app.maps-plus.pathColorList">#0003F0,#D43C29,darkgreen,0xe2d400,darkred,#23A378</option>
+        <option name="leaflet_maps_app.maps-plus.pathRenderer">svg</option>
+        <option name="leaflet_maps_app.maps-plus.pathSplitInterval">60</option>
+        <option name="leaflet_maps_app.maps-plus.pathSplits">0</option>
+        <option name="leaflet_maps_app.maps-plus.permanentTooltip">0</option>
+        <option name="leaflet_maps_app.maps-plus.playbackSpeed">100</option>
+        <option name="leaflet_maps_app.maps-plus.playbackTickLength">50</option>
+        <option name="leaflet_maps_app.maps-plus.rangeOneBgColor">#B5E28C</option>
+        <option name="leaflet_maps_app.maps-plus.rangeOneFgColor">#6ECC39</option>
+        <option name="leaflet_maps_app.maps-plus.rangeThreeBgColor">#FD9C73</option>
+        <option name="leaflet_maps_app.maps-plus.rangeThreeFgColor">#F18017</option>
+        <option name="leaflet_maps_app.maps-plus.rangeTwoBgColor">#F1D357</option>
+        <option name="leaflet_maps_app.maps-plus.rangeTwoFgColor">#F0C20C</option>
+        <option name="leaflet_maps_app.maps-plus.refreshInterval">0</option>
+        <option name="leaflet_maps_app.maps-plus.renderer">svg</option>
+        <option name="leaflet_maps_app.maps-plus.scrollWheelZoom">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPathLines">0</option>
+        <option name="leaflet_maps_app.maps-plus.showPlayback">0</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackDateControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackPlayControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackSliderControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showProgress">1</option>
+        <option name="leaflet_maps_app.maps-plus.singleMarkerMode">0</option>
+        <option name="leaflet_maps_app.maps-plus.spiderfyDistanceMultiplier">1</option>
+        <option name="leaflet_maps_app.maps-plus.splunkVersionCheck">1</option>
+        <option name="leaflet_maps_app.maps-plus.stickyTooltip">1</option>
+        <option name="leaflet_maps_app.maps-plus.warningThreshold">55</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <drilldown>
+          <set token="input_map_circuit">$row.CircuitID$</set>
+        </drilldown>
+      </viz>
+    </panel>
+  </row>
+</form>
